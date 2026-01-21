@@ -387,61 +387,61 @@ if __name__ == "__main__":
     total_start = time.time()
 
     parser = argparse.ArgumentParser()
-    # general
+    # 通用参数设置
     parser.add_argument('-go', "--goal", type=str, default="test", 
-                        help="The goal for this experiment")
+                        help="实验目标")
     parser.add_argument('-dev', "--device", type=str, default="cuda",
-                        choices=["cpu", "cuda"])
-    parser.add_argument('-did', "--device_id", type=str, default="0")
-    parser.add_argument('-data', "--dataset", type=str, default="MNIST")
-    parser.add_argument('-ncl', "--num_classes", type=int, default=10)
-    parser.add_argument('-m', "--model", type=str, default="CNN")
-    parser.add_argument('-lbs', "--batch_size", type=int, default=10)
+                        choices=["cpu", "cuda"], help="运行设备")
+    parser.add_argument('-did', "--device_id", type=str, default="0", help="GPU设备ID")
+    parser.add_argument('-data', "--dataset", type=str, default="MNIST", help="数据集名称")
+    parser.add_argument('-ncl', "--num_classes", type=int, default=10, help="类别数量")
+    parser.add_argument('-m', "--model", type=str, default="CNN", help="模型类型")
+    parser.add_argument('-lbs', "--batch_size", type=int, default=10, help="批大小")
     parser.add_argument('-lr', "--local_learning_rate", type=float, default=0.005,
-                        help="Local learning rate")
-    parser.add_argument('-ld', "--learning_rate_decay", type=bool, default=False)
-    parser.add_argument('-ldg', "--learning_rate_decay_gamma", type=float, default=0.99)
-    parser.add_argument('-gr', "--global_rounds", type=int, default=2000)
+                        help="本地学习率")
+    parser.add_argument('-ld', "--learning_rate_decay", type=bool, default=False, help="是否使用学习率衰减")
+    parser.add_argument('-ldg', "--learning_rate_decay_gamma", type=float, default=0.99, help="学习率衰减系数")
+    parser.add_argument('-gr', "--global_rounds", type=int, default=2000, help="全局训练轮数")
     parser.add_argument('-tc', "--top_cnt", type=int, default=100, 
-                        help="For auto_break")
+                        help="自动停止参数")
     parser.add_argument('-ls', "--local_epochs", type=int, default=1, 
-                        help="Multiple update steps in one local epoch.")
-    parser.add_argument('-algo', "--algorithm", type=str, default="FedAvg")
+                        help="每个本地周期的更新步数")
+    parser.add_argument('-algo', "--algorithm", type=str, default="FedAvg", help="联邦学习算法")
     parser.add_argument('-jr', "--join_ratio", type=float, default=1.0,
-                        help="Ratio of clients per round")
+                        help="每轮参与训练的客户端比例")
     parser.add_argument('-rjr', "--random_join_ratio", type=bool, default=False,
-                        help="Random ratio of clients per round")
+                        help="每轮随机选择客户端比例")
     parser.add_argument('-nc', "--num_clients", type=int, default=20,
-                        help="Total number of clients")
+                        help="客户端总数")
     parser.add_argument('-pv', "--prev", type=int, default=0,
-                        help="Previous Running times")
+                        help="之前的运行次数")
     parser.add_argument('-t', "--times", type=int, default=1,
-                        help="Running times")
+                        help="运行次数")
     parser.add_argument('-eg', "--eval_gap", type=int, default=1,
-                        help="Rounds gap for evaluation")
-    parser.add_argument('-sfn', "--save_folder_name", type=str, default='items')
-    parser.add_argument('-ab', "--auto_break", type=bool, default=False)
-    parser.add_argument('-dlg', "--dlg_eval", type=bool, default=False)
-    parser.add_argument('-dlgg', "--dlg_gap", type=int, default=100)
-    parser.add_argument('-bnpc', "--batch_num_per_client", type=int, default=2)
-    parser.add_argument('-nnc', "--num_new_clients", type=int, default=0)
-    parser.add_argument('-ften', "--fine_tuning_epoch_new", type=int, default=0)
-    parser.add_argument('-fd', "--feature_dim", type=int, default=512)
+                        help="评估间隔轮数")
+    parser.add_argument('-sfn', "--save_folder_name", type=str, default='items', help="保存结果的文件夹名称")
+    parser.add_argument('-ab', "--auto_break", type=bool, default=False, help="是否自动停止")
+    parser.add_argument('-dlg', "--dlg_eval", type=bool, default=False, help="是否进行dlg评估")
+    parser.add_argument('-dlgg', "--dlg_gap", type=int, default=100, help="dlg评估间隔")
+    parser.add_argument('-bnpc', "--batch_num_per_client", type=int, default=2, help="每个客户端的批次数")
+    parser.add_argument('-nnc', "--num_new_clients", type=int, default=0, help="新增客户端数量")
+    parser.add_argument('-ften', "--fine_tuning_epoch_new", type=int, default=0, help="新客户端微调轮数")
+    parser.add_argument('-fd', "--feature_dim", type=int, default=512, help="特征维度")
     parser.add_argument('-vs', "--vocab_size", type=int, default=80, 
-                        help="Set this for text tasks. 80 for Shakespeare. 32000 for AG_News and SogouNews.")
-    parser.add_argument('-ml', "--max_len", type=int, default=200)
-    parser.add_argument('-fs', "--few_shot", type=int, default=0)
-    # practical
+                        help="词汇表大小，用于文本任务。Shakespeare用80，AG_News和SogouNews用32000")
+    parser.add_argument('-ml', "--max_len", type=int, default=200, help="最大序列长度")
+    parser.add_argument('-fs', "--few_shot", type=int, default=0, help="少样本学习参数")
+    # 实际部署相关参数
     parser.add_argument('-cdr', "--client_drop_rate", type=float, default=0.0,
-                        help="Rate for clients that train but drop out")
+                        help="训练过程中掉线的客户端比例")
     parser.add_argument('-tsr', "--train_slow_rate", type=float, default=0.0,
-                        help="The rate for slow clients when training locally")
+                        help="本地训练时慢客户端的比例")
     parser.add_argument('-ssr', "--send_slow_rate", type=float, default=0.0,
-                        help="The rate for slow clients when sending global model")
+                        help="发送全局模型时慢客户端的比例")
     parser.add_argument('-ts', "--time_select", type=bool, default=False,
-                        help="Whether to group and select clients at each round according to time cost")
+                        help="是否根据时间成本分组和选择客户端")
     parser.add_argument('-tth', "--time_threthold", type=float, default=10000,
-                        help="The threthold for droping slow clients")
+                        help="丢弃慢客户端的时间阈值")
     # pFedMe / PerAvg / FedProx / FedAMP / FedPHP / GPFL / FedCAC
     parser.add_argument('-bt', "--beta", type=float, default=0.0)
     parser.add_argument('-lam', "--lamda", type=float, default=1.0,
