@@ -226,31 +226,68 @@ class Server(object):
 
     # evaluate selected clients
     def evaluate(self, acc=None, loss=None):
-        stats = self.test_metrics()
-        stats_train = self.train_metrics()
-
-        test_acc = sum(stats[2])*1.0 / sum(stats[1])
-        test_auc = sum(stats[3])*1.0 / sum(stats[1])
-        train_loss = sum(stats_train[2])*1.0 / sum(stats_train[1])
-        accs = [a / n for a, n in zip(stats[2], stats[1])]
-        aucs = [a / n for a, n in zip(stats[3], stats[1])]
+        # 只在公共数据集上评估全局模型，注释掉客户端验证以减少计算开销
+        public_acc, public_auc = self.evaluate_public()
+        print("Public Test Accuracy: {:.4f}".format(public_acc))
+        print("Public Test AUC: {:.4f}".format(public_auc))
         
+        # 保存公共验证集的准确率
         if acc == None:
-            self.rs_test_acc.append(test_acc)
+            self.rs_test_acc.append(public_acc)
         else:
-            acc.append(test_acc)
+            acc.append(public_acc)
         
-        if loss == None:
-            self.rs_train_loss.append(train_loss)
-        else:
-            loss.append(train_loss)
-
-        print("Averaged Train Loss: {:.4f}".format(train_loss))
-        print("Averaged Test Accuracy: {:.4f}".format(test_acc))
-        print("Averaged Test AUC: {:.4f}".format(test_auc))
-        # self.print_(test_acc, train_acc, train_loss)
-        print("Std Test Accuracy: {:.4f}".format(np.std(accs)))
-        print("Std Test AUC: {:.4f}".format(np.std(aucs)))
+    def evaluate_public(self):
+        """在公共数据集上评估全局模型"""
+        from torch.utils.data import DataLoader
+        import torch
+        from sklearn.preprocessing import label_binarize
+        from sklearn import metrics
+        import numpy as np
+        
+        # 加载公共测试数据
+        public_data_path = os.path.join('../dataset', self.dataset, 'public', 'public_data.npz')
+        public_data = np.load(public_data_path, allow_pickle=True)
+        public_images = torch.Tensor(public_data['x']).type(torch.float32)
+        public_labels = torch.Tensor(public_data['y']).type(torch.int64)
+        public_dataset = [(x, y) for x, y in zip(public_images, public_labels)]
+        
+        testloader = DataLoader(public_dataset, self.batch_size, drop_last=False, shuffle=True)
+        
+        self.global_model.eval()
+        
+        test_acc = 0
+        test_num = 0
+        y_prob = []
+        y_true = []
+        
+        with torch.no_grad():
+            for x, y in testloader:
+                if type(x) == type([]):
+                    x[0] = x[0].to(self.device)
+                else:
+                    x = x.to(self.device)
+                y = y.to(self.device)
+                output = self.global_model(x)
+                
+                test_acc += (torch.sum(torch.argmax(output, dim=1) == y)).item()
+                test_num += y.shape[0]
+                
+                y_prob.append(output.detach().cpu().numpy())
+                nc = self.num_classes
+                if self.num_classes == 2:
+                    nc += 1
+                lb = label_binarize(y.detach().cpu().numpy(), classes=np.arange(nc))
+                if self.num_classes == 2:
+                    lb = lb[:, :2]
+                y_true.append(lb)
+        
+        y_prob = np.concatenate(y_prob, axis=0)
+        y_true = np.concatenate(y_true, axis=0)
+        
+        auc = metrics.roc_auc_score(y_true, y_prob, average='micro')
+        
+        return test_acc / test_num, auc
 
     def print_(self, test_acc, test_auc, train_loss):
         print("Average Test Accuracy: {:.4f}".format(test_acc))

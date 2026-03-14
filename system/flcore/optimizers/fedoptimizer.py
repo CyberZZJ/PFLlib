@@ -62,14 +62,50 @@ class APFLOptimizer(Optimizer):
 
 
 class PerturbedGradientDescent(Optimizer):
+    """
+    扰动梯度下降优化器（FedProx 核心优化器）
+    
+    在标准梯度下降的基础上添加了近端正则化项的梯度
+    用于 FedProx 算法，处理 non-iid 数据下的收敛问题
+    
+    更新规则：
+    w = w - lr * (grad_loss + mu * (w - w_global))
+    
+    其中：
+    - grad_loss: 原始损失函数的梯度
+    - mu: 近端系数，控制正则化强度
+    - (w - w_global): 当前参数与全局参数的偏差
+    """
     def __init__(self, params, lr=0.01, mu=0.0):
+        """
+        初始化优化器
+        
+        参数:
+            params: 模型参数
+            lr: 学习率
+            mu: 近端系数，默认为 0（退化为标准 SGD）
+        """
         default = dict(lr=lr, mu=mu)
         super().__init__(params, default)
 
     @torch.no_grad()
     def step(self, global_params, device):
+        """
+        执行一步参数更新
+        
+        参数:
+            global_params: 全局模型参数（用于计算近端项）
+            device: 计算设备
+        """
         for group in self.param_groups:
+            # 遍历所有参数张量
             for p, g in zip(group['params'], global_params):
                 g = g.to(device)
+                
+                # 计算扰动梯度：grad_loss + mu * (w - w_global)
+                # 第一项是原始损失梯度，第二项是近端正则化梯度
+                # 近端项的作用是将参数拉向全局参数，防止偏离太远
                 d_p = p.grad.data + group['mu'] * (p.data - g.data)
+                
+                # 应用梯度更新：w = w - lr * d_p
                 p.data.add_(d_p, alpha=-group['lr'])
