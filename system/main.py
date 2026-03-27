@@ -412,7 +412,7 @@ if __name__ == "__main__":
     parser.add_argument('-gr', "--global_rounds", type=int, default=50, help="全局训练轮数")
     parser.add_argument('-tc', "--top_cnt", type=int, default=100, help="自动停止参数")
     parser.add_argument('-ls', "--local_epochs", type=int, default=1, help="每个本地周期的更新步数")
-    parser.add_argument('-algo', "--algorithm", type=str, default="DPProx", help="联邦学习算法")
+    parser.add_argument('-algo', "--algorithm", type=str, default="DPProxNative", help="联邦学习算法")
     parser.add_argument('-jr', "--join_ratio", type=float, default=1.0, help="每轮参与训练的客户端比例")
     parser.add_argument('-rjr', "--random_join_ratio", type=bool, default=False, help="每轮随机选择客户端比例")
     parser.add_argument('-nc', "--num_clients", type=int, default=20, help="客户端总数")
@@ -521,7 +521,7 @@ if __name__ == "__main__":
                         help="隐私正则项系数")
     parser.add_argument('-sup_noise', '--use_supplementary_noise', action='store_true',
                         help="是否使用补充噪声")
-    parser.add_argument('-sup_noise_scale', '--supplementary_noise_scale', type=float, default=0.001,
+    parser.add_argument('-sup_noise_scale', '--supplementary_noise_scale', type=float, default=0.45,
                         help="补充噪声尺度")
     
     # 个性化差分隐私（PDP）参数
