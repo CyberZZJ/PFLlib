@@ -1,0 +1,36 @@
+[
+  {
+    "param_idx": 0,
+    "params": {
+      "epsilon": 4.5,
+      "delta": 1e-05,
+      "clip_norm": 0.6,
+      "noise_multiplier": 1.0,
+      "mu": 0.10500000000000001,
+      "actual_epsilon": 2.9069
+    },
+    "best_accuracy": 0.277,
+    "best_round": 5,
+    "total_rounds": 7,
+    "privacy_budget": 2.9069,
+    "session_id": "MNIST_DPProx_20260327_145427",
+    "terminated_early": false
+  },
+  {
+    "param_idx": 1,
+    "params": {
+      "epsilon": 4.0,
+      "delta": 1e-05,
+      "clip_norm": 0.2,
+      "noise_multiplier": 0.5,
+      "mu": 0.01,
+      "actual_epsilon": 1.9379
+    },
+    "best_accuracy": 0.765,
+    "best_round": 10,
+    "total_rounds": 10,
+    "privacy_budget": 1.9379,
+    "session_id": "MNIST_DPProx_20260327_145709",
+    "terminated_early": false
+  }
+]

@@ -1,0 +1,84 @@
+{
+  "metadata": {
+    "generated_at": "2026-03-27T15:01:06.246110",
+    "dataset": "MNIST",
+    "algorithm": "DPProx",
+    "total_combinations": 2
+  },
+  "best_result": {
+    "accuracy": 0.765,
+    "round": 10,
+    "privacy_budget": 1.9379,
+    "params": {
+      "epsilon": 4.0,
+      "delta": 1e-05,
+      "clip_norm": 0.2,
+      "noise_multiplier": 0.5,
+      "mu": 0.01,
+      "actual_epsilon": 1.9379
+    }
+  },
+  "all_results": [
+    {
+      "param_idx": 1,
+      "accuracy": 0.765,
+      "round": 10,
+      "privacy_budget": 1.9379,
+      "params": {
+        "epsilon": 4.0,
+        "delta": 1e-05,
+        "clip_norm": 0.2,
+        "noise_multiplier": 0.5,
+        "mu": 0.01,
+        "actual_epsilon": 1.9379
+      },
+      "terminated_early": false
+    },
+    {
+      "param_idx": 0,
+      "accuracy": 0.277,
+      "round": 5,
+      "privacy_budget": 2.9069,
+      "params": {
+        "epsilon": 4.5,
+        "delta": 1e-05,
+        "clip_norm": 0.6,
+        "noise_multiplier": 1.0,
+        "mu": 0.10500000000000001,
+        "actual_epsilon": 2.9069
+      },
+      "terminated_early": false
+    }
+  ],
+  "statistics": {
+    "accuracy": {
+      "max": 0.765,
+      "min": 0.277,
+      "mean": 0.521,
+      "std": 0.244
+    },
+    "privacy_budget": {
+      "max": 2.9069,
+      "min": 1.9379,
+      "mean": 2.4223999999999997
+    }
+  },
+  "config": {
+    "epsilon_range": [
+      4.0,
+      5.0
+    ],
+    "clip_norm_range": [
+      0.2,
+      1.0
+    ],
+    "noise_multiplier_range": [
+      0.5,
+      1.5
+    ],
+    "mu_range": [
+      0.01,
+      0.2
+    ]
+  }
+}

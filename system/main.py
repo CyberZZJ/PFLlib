@@ -49,6 +49,9 @@ from flcore.servers.serverda import PFL_DA
 from flcore.servers.serverlc import FedLC
 from flcore.servers.serveras import FedAS
 from flcore.servers.servercross import FedCross
+from flcore.servers.serverproxbeam import FedProxBeam
+from flcore.servers.serverdpprox import DPProx
+from flcore.servers.serverdpproxnative import DPProxNative
 
 from flcore.trainmodel.models import *
 
@@ -203,6 +206,15 @@ def run(args):
 
         elif args.algorithm == "FedProx":
             server = FedProx(args, i)
+
+        elif args.algorithm == "FedProxBeam":
+            server = FedProxBeam(args, i)
+
+        elif args.algorithm == "DPProx":
+            server = DPProx(args, i)
+
+        elif args.algorithm == "DPProxNative":
+            server = DPProxNative(args, i)
 
         elif args.algorithm == "FedFomo":
             server = FedFomo(args, i)
@@ -382,7 +394,6 @@ def run(args):
 
     reporter.report()
 
-
 if __name__ == "__main__":
     total_start = time.time()
 
@@ -398,10 +409,10 @@ if __name__ == "__main__":
     parser.add_argument('-lr', "--local_learning_rate", type=float, default=0.005, help="本地学习率")
     parser.add_argument('-ld', "--learning_rate_decay", type=bool, default=False, help="是否使用学习率衰减")
     parser.add_argument('-ldg', "--learning_rate_decay_gamma", type=float, default=0.99, help="学习率衰减系数")
-    parser.add_argument('-gr', "--global_rounds", type=int, default=2000, help="全局训练轮数")
+    parser.add_argument('-gr', "--global_rounds", type=int, default=50, help="全局训练轮数")
     parser.add_argument('-tc', "--top_cnt", type=int, default=100, help="自动停止参数")
     parser.add_argument('-ls', "--local_epochs", type=int, default=1, help="每个本地周期的更新步数")
-    parser.add_argument('-algo', "--algorithm", type=str, default="FedAvg", help="联邦学习算法")
+    parser.add_argument('-algo', "--algorithm", type=str, default="DPProx", help="联邦学习算法")
     parser.add_argument('-jr', "--join_ratio", type=float, default=1.0, help="每轮参与训练的客户端比例")
     parser.add_argument('-rjr', "--random_join_ratio", type=bool, default=False, help="每轮随机选择客户端比例")
     parser.add_argument('-nc', "--num_clients", type=int, default=20, help="客户端总数")
@@ -434,7 +445,7 @@ if __name__ == "__main__":
     parser.add_argument('-bt', "--beta", type=float, default=0.0)
     parser.add_argument('-lam', "--lamda", type=float, default=1.0,
                         help="Regularization weight")
-    parser.add_argument('-mu', "--mu", type=float, default=0.0)
+    parser.add_argument('-mu', "--mu", type=float, default=0.01)
     parser.add_argument('-K', "--K", type=int, default=5,
                         help="Number of personalized training steps for pFedMe")
     parser.add_argument('-lrp', "--p_learning_rate", type=float, default=0.01,
@@ -480,6 +491,48 @@ if __name__ == "__main__":
     # FedDBE
     parser.add_argument('-mo', "--momentum", type=float, default=0.1)
     parser.add_argument('-klw', "--kl_weight", type=float, default=0.0)
+
+    # FedProxBeam / FedBeam
+    parser.add_argument('-trend_up', "--trend_up_threshold", type=float, default=0.01,
+                        help="准确率提升阈值（用于动态调整 μ 值）")
+    parser.add_argument('-trend_down', "--trend_down_threshold", type=float, default=-0.01,
+                        help="准确率下降阈值（用于动态调整 μ 值）")
+    parser.add_argument('-cf_agg', "--compression_factor_aggressive", type=float, default=1.2,
+                        help="激进 μ 调整因子（准确率提升时使用）")
+    parser.add_argument('-cf_con', "--compression_factor_conservative", type=float, default=0.8,
+                        help="保守 μ 调整因子（准确率下降时使用）")
+    parser.add_argument('-cf_sta', "--compression_factor_stable", type=float, default=0.05,
+                        help="稳定 μ 调整因子（准确率稳定时使用）")
+    parser.add_argument('-topk', "--topk_ratio", type=float, default=0.5,
+                        help="TopK 压缩比例（保留参数比例）")
+
+    # DP-Prox 参数
+    parser.add_argument('-dp_clip', '--dp_clip_norm', type=float, default=0.2,
+                        help="梯度裁剪阈值")
+    parser.add_argument('-dp_noise', '--dp_noise_multiplier', type=float, default=0.5,
+                        help="噪声乘数")
+    parser.add_argument('-dp_eps', '--dp_epsilon', type=float, default=4.0,
+                        help="隐私预算")
+    parser.add_argument('-dp_delta', '--dp_delta', type=float, default=1e-5,
+                        help="隐私参数")
+
+    # DP-Prox-Native 参数
+    parser.add_argument('-lambda_priv', '--lambda_privacy', type=float, default=0.05,
+                        help="隐私正则项系数")
+    parser.add_argument('-sup_noise', '--use_supplementary_noise', action='store_true',
+                        help="是否使用补充噪声")
+    parser.add_argument('-sup_noise_scale', '--supplementary_noise_scale', type=float, default=0.001,
+                        help="补充噪声尺度")
+    
+    # 个性化差分隐私（PDP）参数
+    parser.add_argument('-pdp', '--pdp_enabled', action='store_true',
+                        help="启用个性化差分隐私")
+    parser.add_argument('-pdp_z', '--pdp_z', type=float, default=0.0,
+                        help="控制隐私需求分布的参数")
+    parser.add_argument('-pdp_min', '--pdp_min_epsilon', type=float, default=0.5,
+                        help="隐私预算区间最小值")
+    parser.add_argument('-pdp_max', '--pdp_max_epsilon', type=float, default=1.0,
+                        help="隐私预算区间最大值")
 
     # FedCross
     parser.add_argument('-fsb', "--first_stage_bound", type=int, default=0)

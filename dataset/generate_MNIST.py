@@ -23,9 +23,11 @@ def generate_dataset(dir_path, num_clients, niid, balance, partition):
     config_path = dir_path + "config.json"
     train_path = dir_path + "train/"
     test_path = dir_path + "test/"
+    public_path = dir_path + "public/"
 
-    if check(config_path, train_path, test_path, num_clients, niid, balance, partition):
-        return
+    # Always create public dataset, even if other files exist
+    # if check(config_path, train_path, test_path, num_clients, niid, balance, partition):
+    #     return
 
     # # FIX HTTP Error 403: Forbidden
     # from six.moves import urllib
@@ -62,6 +64,31 @@ def generate_dataset(dir_path, num_clients, niid, balance, partition):
 
     num_classes = len(set(dataset_label))
     print(f'Number of classes: {num_classes}')
+
+    # Create public dataset with 100 samples per class
+    public_image = []
+    public_label = []
+    for i in range(num_classes):
+        idx = np.where(dataset_label == i)[0]
+        np.random.shuffle(idx)
+        selected_idx = idx[:100]  # Take 100 samples per class
+        public_image.extend(dataset_image[selected_idx])
+        public_label.extend(dataset_label[selected_idx])
+        # Remove selected samples from original dataset
+        dataset_image = np.delete(dataset_image, selected_idx, axis=0)
+        dataset_label = np.delete(dataset_label, selected_idx, axis=0)
+
+    public_image = np.array(public_image)
+    public_label = np.array(public_label)
+
+    # Save public dataset
+    if not os.path.exists(public_path):
+        os.makedirs(public_path, exist_ok=True)
+    public_data = {'x': public_image, 'y': public_label}
+    public_file_path = os.path.join(public_path, 'public_data.npz')
+    with open(public_file_path, 'wb') as f:
+        np.savez_compressed(f, data=public_data)
+    print(f"Public dataset created at {public_file_path} with {len(public_image)} samples (100 per class)")
 
     # dataset = []
     # for i in range(num_classes):

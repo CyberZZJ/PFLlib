@@ -5,10 +5,12 @@ from collections import defaultdict
 
 
 def read_data(dataset, idx, is_train=True):
+    # Get dataset directory from environment variable or use default
+    dataset_dir = os.environ.get('DATASET_DIR', os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'dataset'))
     if is_train:
-        data_dir = os.path.join('../dataset', dataset, 'train/')
+        data_dir = os.path.join(dataset_dir, dataset, 'train/')
     else:
-        data_dir = os.path.join('../dataset', dataset, 'test/')
+        data_dir = os.path.join(dataset_dir, dataset, 'test/')
 
     file = data_dir + str(idx) + '.npz'
     with open(file, 'rb') as f:

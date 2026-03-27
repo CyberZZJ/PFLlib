@@ -246,8 +246,11 @@ class Server(object):
         import numpy as np
         
         # 加载公共测试数据
-        public_data_path = os.path.join('../dataset', self.dataset, 'public', 'public_data.npz')
-        public_data = np.load(public_data_path, allow_pickle=True)
+        # Get dataset directory from environment variable or use default
+        import os
+        # Use fixed path for public data
+        public_data_path = r'C:\Users\Gimonster\Documents\GitHub\PFLlib\dataset\MNIST\public\public_data.npz'
+        public_data = np.load(public_data_path, allow_pickle=True)['data'].tolist()
         public_images = torch.Tensor(public_data['x']).type(torch.float32)
         public_labels = torch.Tensor(public_data['y']).type(torch.int64)
         public_dataset = [(x, y) for x, y in zip(public_images, public_labels)]
