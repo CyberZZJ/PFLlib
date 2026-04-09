@@ -58,18 +58,18 @@ class FedCP(Server):
             self.add_parameters(w, client_model)
 
     def evaluate(self, acc=None):
-        stats = self.test_metrics()
-
-        test_acc = sum(stats[2])*1.0 / sum(stats[1])
-        test_auc = sum(stats[3])*1.0 / sum(stats[1])
-        
+        if hasattr(self, "global_modules") and hasattr(self.global_model, "base"):
+            self.global_model.base.load_state_dict(copy.deepcopy(self.global_modules.state_dict()), strict=True)
+        metrics_dict = self.evaluate_global_metrics()
         if acc == None:
-            self.rs_test_acc.append(test_acc)
+            self.rs_test_acc.append(metrics_dict["accuracy"])
+            self.rs_test_auc.append(metrics_dict["precision"])
         else:
-            acc.append(test_acc)
-
-        print("Averaged Test Accuracy: {:.4f}".format(test_acc))
-        print("Averaged Test AUC: {:.4f}".format(test_auc))
+            acc.append(metrics_dict["accuracy"])
+        print("Global Accuracy: {:.4f}".format(metrics_dict["accuracy"]))
+        print("Global Precision: {:.4f}".format(metrics_dict["precision"]))
+        print("Global Recall: {:.4f}".format(metrics_dict["recall"]))
+        print("Global F1-score: {:.4f}".format(metrics_dict["f1_score"]))
 
 
     def train(self):

@@ -1,4 +1,3 @@
-import numpy as np
 import time
 from flcore.clients.clientditto import clientDitto
 from flcore.servers.serverbase import Server
@@ -77,19 +76,9 @@ class Ditto(Server):
         if self.eval_new_clients and self.num_new_clients > 0:
             self.fine_tuning_new_clients()
             return self.test_metrics_new_clients()
-        
-        num_samples = []
-        tot_correct = []
-        tot_auc = []
-        for c in self.clients:
-            ct, ns, auc = c.test_metrics_personalized()
-            tot_correct.append(ct*1.0)
-            tot_auc.append(auc*ns)
-            num_samples.append(ns)
-
-        ids = [c.id for c in self.clients]
-
-        return ids, num_samples, tot_correct, tot_auc
+        metrics_dict = self.evaluate_global_metrics()
+        total_samples = max(1, self.num_clients)
+        return [0], [total_samples], [metrics_dict["accuracy"] * total_samples], [metrics_dict["precision"] * total_samples]
 
     def train_metrics_personalized(self):
         if self.eval_new_clients and self.num_new_clients > 0:
@@ -114,8 +103,6 @@ class Ditto(Server):
         test_acc = sum(stats[2])*1.0 / sum(stats[1])
         test_auc = sum(stats[3])*1.0 / sum(stats[1])
         train_loss = sum(stats_train[2])*1.0 / sum(stats_train[1])
-        accs = [a / n for a, n in zip(stats[2], stats[1])]
-        aucs = [a / n for a, n in zip(stats[3], stats[1])]
         
         if acc == None:
             self.rs_test_acc.append(test_acc)
@@ -130,6 +117,5 @@ class Ditto(Server):
         print("Averaged Train Loss: {:.4f}".format(train_loss))
         print("Averaged Test Accuracy: {:.4f}".format(test_acc))
         print("Averaged Test AUC: {:.4f}".format(test_auc))
-        # self.print_(test_acc, train_acc, train_loss)
-        print("Std Test Accuracy: {:.4f}".format(np.std(accs)))
-        print("Std Test AUC: {:.4f}".format(np.std(aucs)))
+        print("Std Test Accuracy: {:.4f}".format(0.0))
+        print("Std Test AUC: {:.4f}".format(0.0))

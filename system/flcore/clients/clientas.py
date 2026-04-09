@@ -112,20 +112,7 @@ class clientAS(Client):
             # print(f"FIM-T value change: {(self.fim_trace_history[-1] - (self.fim_trace_history[-2] if len(self.fim_trace_history) > 1 else 0)):.1f}")
 
     def evaluate(self):
-        testloader = self.load_test_data()
-        self.model.eval()
-        correct = 0
-        total = 0
-        with torch.no_grad():
-            for x, y in testloader:
-                x = x.to(self.device)
-                y = y.to(self.device)
-                outputs = self.model(x)
-                _, predicted = outputs.max(1)
-                total += y.size(0)
-                correct += predicted.eq(y).sum().item()
-        accuracy = 100. * correct / total
-        return accuracy
+        raise RuntimeError("EVAL_CLIENT_SIDE_DISABLED: centralized evaluation is enabled.")
     
     # def set_parameters(self, model, progress):
         # # Substitute the parameters of the base, enabling personalization

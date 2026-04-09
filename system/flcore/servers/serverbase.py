@@ -7,6 +7,7 @@ import time
 import random
 from utils.data_utils import read_client_data
 from utils.dlg import DLG
+from flcore.servers.centralized_evaluator import evaluate_global_model, EvaluationError
 
 
 class Server(object):
@@ -62,6 +63,8 @@ class Server(object):
         self.new_clients = []
         self.eval_new_clients = False
         self.fine_tuning_epoch_new = args.fine_tuning_epoch_new
+        self.public_feature_key = getattr(args, "public_feature_key", "x")
+        self.public_label_key = getattr(args, "public_label_key", "y")
 
     def set_clients(self, clientObj):
         for i, train_slow, send_slow in zip(range(self.num_clients), self.train_slow_clients, self.send_slow_clients):
@@ -195,19 +198,9 @@ class Server(object):
         if self.eval_new_clients and self.num_new_clients > 0:
             self.fine_tuning_new_clients()
             return self.test_metrics_new_clients()
-        
-        num_samples = []
-        tot_correct = []
-        tot_auc = []
-        for c in self.clients:
-            ct, ns, auc = c.test_metrics()
-            tot_correct.append(ct*1.0)
-            tot_auc.append(auc*ns)
-            num_samples.append(ns)
-
-        ids = [c.id for c in self.clients]
-
-        return ids, num_samples, tot_correct, tot_auc
+        metrics_dict = self.evaluate_global_metrics()
+        total_samples = max(1, self.num_clients)
+        return [0], [total_samples], [metrics_dict["accuracy"] * total_samples], [metrics_dict["precision"] * total_samples]
 
     def train_metrics(self):
         if self.eval_new_clients and self.num_new_clients > 0:
@@ -226,68 +219,34 @@ class Server(object):
 
     # evaluate selected clients
     def evaluate(self, acc=None, loss=None):
-        # 只在公共数据集上评估全局模型，注释掉客户端验证以减少计算开销
-        public_acc, public_auc = self.evaluate_public()
-        print("Public Test Accuracy: {:.4f}".format(public_acc))
-        print("Public Test AUC: {:.4f}".format(public_auc))
-        
-        # 保存公共验证集的准确率
+        metrics_dict = self.evaluate_global_metrics()
+        print("Global Accuracy: {:.4f}".format(metrics_dict["accuracy"]))
+        print("Global Precision: {:.4f}".format(metrics_dict["precision"]))
+        print("Global Recall: {:.4f}".format(metrics_dict["recall"]))
+        print("Global F1-score: {:.4f}".format(metrics_dict["f1_score"]))
+
         if acc == None:
-            self.rs_test_acc.append(public_acc)
+            self.rs_test_acc.append(metrics_dict["accuracy"])
+            self.rs_test_auc.append(metrics_dict["precision"])
         else:
-            acc.append(public_acc)
-        
-    def evaluate_public(self):
-        """在公共数据集上评估全局模型"""
-        from torch.utils.data import DataLoader
-        import torch
-        from sklearn.preprocessing import label_binarize
-        from sklearn import metrics
-        import numpy as np
-        
-        # 加载公共测试数据
-        public_data_path = os.path.join('../dataset', self.dataset, 'public', 'public_data.npz')
-        public_data = np.load(public_data_path, allow_pickle=True)
-        public_images = torch.Tensor(public_data['x']).type(torch.float32)
-        public_labels = torch.Tensor(public_data['y']).type(torch.int64)
-        public_dataset = [(x, y) for x, y in zip(public_images, public_labels)]
-        
-        testloader = DataLoader(public_dataset, self.batch_size, drop_last=False, shuffle=True)
-        
-        self.global_model.eval()
-        
-        test_acc = 0
-        test_num = 0
-        y_prob = []
-        y_true = []
-        
-        with torch.no_grad():
-            for x, y in testloader:
-                if type(x) == type([]):
-                    x[0] = x[0].to(self.device)
-                else:
-                    x = x.to(self.device)
-                y = y.to(self.device)
-                output = self.global_model(x)
-                
-                test_acc += (torch.sum(torch.argmax(output, dim=1) == y)).item()
-                test_num += y.shape[0]
-                
-                y_prob.append(output.detach().cpu().numpy())
-                nc = self.num_classes
-                if self.num_classes == 2:
-                    nc += 1
-                lb = label_binarize(y.detach().cpu().numpy(), classes=np.arange(nc))
-                if self.num_classes == 2:
-                    lb = lb[:, :2]
-                y_true.append(lb)
-        
-        y_prob = np.concatenate(y_prob, axis=0)
-        y_true = np.concatenate(y_true, axis=0)
-        
-        auc = metrics.roc_auc_score(y_true, y_prob, average='micro')
-        
-        return test_acc / test_num, auc
+            acc.append(metrics_dict["accuracy"])
+
+    def evaluate_global_metrics(self):
+        model_weights = copy.deepcopy(self.global_model.state_dict())
+        try:
+            return evaluate_global_model(
+                aggregated_weights=model_weights,
+                model_template=self.global_model,
+                dataset_name=self.dataset,
+                device=self.device,
+                batch_size=self.batch_size,
+                feature_key=self.public_feature_key,
+                label_key=self.public_label_key,
+            )
+        except EvaluationError:
+            raise
+        except Exception as exc:
+            raise EvaluationError("EVAL_RUNTIME_FAILED", str(exc))
 
     def print_(self, test_acc, test_auc, train_loss):
         print("Average Test Accuracy: {:.4f}".format(test_acc))
@@ -393,15 +352,6 @@ class Server(object):
 
     # evaluating on new clients
     def test_metrics_new_clients(self):
-        num_samples = []
-        tot_correct = []
-        tot_auc = []
-        for c in self.new_clients:
-            ct, ns, auc = c.test_metrics()
-            tot_correct.append(ct*1.0)
-            tot_auc.append(auc*ns)
-            num_samples.append(ns)
-
-        ids = [c.id for c in self.new_clients]
-
-        return ids, num_samples, tot_correct, tot_auc
+        metrics_dict = self.evaluate_global_metrics()
+        total_samples = max(1, len(self.new_clients))
+        return [0], [total_samples], [metrics_dict["accuracy"] * total_samples], [metrics_dict["precision"] * total_samples]

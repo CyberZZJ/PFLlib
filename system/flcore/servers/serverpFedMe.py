@@ -94,16 +94,9 @@ class pFedMe(Server):
         if self.eval_new_clients and self.num_new_clients > 0:
             self.fine_tuning_new_clients()
             return self.test_metrics_new_clients()
-        
-        num_samples = []
-        tot_correct = []
-        for c in self.clients:
-            ct, ns = c.test_metrics_personalized()
-            tot_correct.append(ct*1.0)
-            num_samples.append(ns)
-        ids = [c.id for c in self.clients]
-
-        return ids, num_samples, tot_correct
+        metrics_dict = self.evaluate_global_metrics()
+        total_samples = max(1, self.num_clients)
+        return [0], [total_samples], [metrics_dict["accuracy"] * total_samples]
 
     def train_metrics_personalized(self):
         if self.eval_new_clients and self.num_new_clients > 0:

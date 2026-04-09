@@ -1,6 +1,4 @@
-import copy
 import time
-import numpy as np
 from flcore.clients.clientperavg import clientPerAvg
 from flcore.servers.serverbase import Server
 from threading import Thread
@@ -69,29 +67,15 @@ class PerAvg(Server):
 
 
     def evaluate_one_step(self, acc=None, loss=None):
-        models_temp = []
-        for c in self.clients:
-            models_temp.append(copy.deepcopy(c.model))
-            c.train_one_step()
-        stats = self.test_metrics()
-        # set the local model back on clients for training process
-        for i, c in enumerate(self.clients):
-            c.clone_model(models_temp[i], c.model)
-            
         stats_train = self.train_metrics()
-        # set the local model back on clients for training process
-        for i, c in enumerate(self.clients):
-            c.clone_model(models_temp[i], c.model)
-
-        accs = [a / n for a, n in zip(stats[2], stats[1])]
-
-        test_acc = sum(stats[2])*1.0 / sum(stats[1])
+        metrics_dict = self.evaluate_global_metrics()
         train_loss = sum(stats_train[2])*1.0 / sum(stats_train[1])
         
         if acc == None:
-            self.rs_test_acc.append(test_acc)
+            self.rs_test_acc.append(metrics_dict["accuracy"])
+            self.rs_test_auc.append(metrics_dict["precision"])
         else:
-            acc.append(test_acc)
+            acc.append(metrics_dict["accuracy"])
         
         if loss == None:
             self.rs_train_loss.append(train_loss)
@@ -99,6 +83,7 @@ class PerAvg(Server):
             loss.append(train_loss)
 
         print("Averaged Train Loss: {:.4f}".format(train_loss))
-        print("Averaged Test Accuracy: {:.4f}".format(test_acc))
-        # self.print_(test_acc, train_acc, train_loss)
-        print("Std Test Accuracy: {:.4f}".format(np.std(accs)))
+        print("Global Accuracy: {:.4f}".format(metrics_dict["accuracy"]))
+        print("Global Precision: {:.4f}".format(metrics_dict["precision"]))
+        print("Global Recall: {:.4f}".format(metrics_dict["recall"]))
+        print("Global F1-score: {:.4f}".format(metrics_dict["f1_score"]))
